@@ -77,9 +77,31 @@
         .prose-sm code { color: #38bdf8; font-family: monospace; }
         .scrollbar-hide::-webkit-scrollbar { display: none; }
         .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* 爱心特效样式 */
+        .click-heart {
+            position: fixed;
+            top: -100px; /* 初始位置移出屏幕 */
+            left: 0;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            z-index: 9999;
+            animation: fly-up 1s ease-out forwards;
+        }
+
+        @keyframes fly-up {
+            0% {
+                transform: translate(-50%, -50%) scale(0.5);
+                opacity: 1;
+            }
+            100% {
+                transform: translate(-50%, -150px) scale(1.5);
+                opacity: 0;
+            }
+        }
     </style>
 </head>
-<body class="bg-dark-bg text-slate-300 font-sans antialiased selection:bg-brand-500 selection:text-white relative">
+<body class="bg-dark-bg text-slate-300 font-sans antialiased selection:bg-brand-500 selection:text-white relative cursor-pointer">
 
     <!-- 背景装饰 -->
     <div class="fixed inset-0 pointer-events-none z-0">
@@ -135,7 +157,7 @@
         <div class="relative z-10 max-w-5xl mx-auto px-4 text-center">
             <div class="inline-flex items-center gap-2 mb-8 px-4 py-1.5 rounded-full border border-brand-500/30 bg-brand-500/10 backdrop-blur-sm text-brand-300 text-xs font-mono tracking-wider uppercase animate-fadeIn">
                 <span class="w-2 h-2 rounded-full bg-brand-400 animate-pulse"></span>
-                Embedded System Project 2026
+                Embedded System Project 2024
             </div>
             
             <h1 class="text-5xl md:text-7xl lg:text-8xl font-bold text-white mb-8 tracking-tight leading-tight">
@@ -403,6 +425,7 @@
     <footer class="py-12 border-t border-slate-800 bg-dark-bg text-center relative z-10">
         <div class="max-w-7xl mx-auto px-4">
             <p class="text-slate-500 text-sm mb-4">
+                <!-- 更新年份以触发 GitHub Actions -->
                 © 2026 溯光小组 (AL-car Project). All Rights Reserved.
             </p>
             <div class="flex justify-center gap-6">
@@ -455,6 +478,7 @@
         </div>
     </div>
 
+    <!-- 脚本部分 -->
     <script>
         const apiKey = ""; 
         const chatWindow = document.getElementById('ai-chat-window');
@@ -533,11 +557,45 @@
 
         sendBtn.addEventListener('click', handleSend);
         userInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') handleSend(); });
+
+        // ❤️ 爱心点击特效逻辑
+        document.addEventListener('click', function(e) {
+            // 如果点击的是交互元素（按钮、输入框、视频），则不生成爱心，避免遮挡
+            if (e.target.tagName === 'BUTTON' || 
+                e.target.tagName === 'INPUT' || 
+                e.target.tagName === 'A' || 
+                e.target.tagName === 'VIDEO' ||
+                e.target.closest('button') || 
+                e.target.closest('a')) {
+                return;
+            }
+
+            const heart = document.createElement('i');
+            heart.classList.add('fa-solid', 'fa-heart', 'click-heart');
+            
+            // 随机颜色数组 (更鲜艳的糖果色)
+            const colors = [
+                '#ff71ce', '#01cdfe', '#05ffa1', '#b967ff', '#fffb96', 
+                '#ff4d6d', '#ff9e64', '#9ece6a', '#7aa2f7', '#bb9af7'
+            ];
+            const randomColor = colors[Math.floor(Math.random() * colors.length)];
+            
+            // 设置位置和颜色
+            heart.style.left = e.clientX + 'px';
+            heart.style.top = e.clientY + 'px';
+            heart.style.color = randomColor;
+            
+            // 随机大小 (15px - 30px)
+            const size = Math.floor(Math.random() * 15) + 15;
+            heart.style.fontSize = size + 'px';
+
+            document.body.appendChild(heart);
+
+            // 动画结束后移除元素 (1秒后)
+            setTimeout(() => {
+                heart.remove();
+            }, 1000);
+        });
     </script>
 </body>
-
 </html>
-
-
-
-
