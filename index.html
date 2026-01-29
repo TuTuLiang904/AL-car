@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>溯光 | 智能小车项目展示</title>
+    <meta name="description" content="基于STM32与计算机视觉的智能小车项目展示">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'Noto Sans SC', 'system-ui', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            400: '#38bdf8',
+                            500: '#0ea5e9',
+                            600: '#0284c7',
+                            glow: 'rgba(14, 165, 233, 0.5)',
+                        },
+                        dark: {
+                            bg: '#0b1120',
+                            card: '#1e293b', 
+                            border: '#334155',
+                        }
+                    },
+                    animation: {
+                        'blob': 'blob 10s infinite',
+                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'float': 'float 3s ease-in-out infinite',
+                    },
+                    keyframes: {
+                        blob: {
+                            '0%': { transform: 'translate(0px, 0px) scale(1)' },
+                            '33%': { transform: 'translate(30px, -50px) scale(1.1)' },
+                            '66%': { transform: 'translate(-20px, 20px) scale(0.9)' },
+                            '100%': { transform: 'translate(0px, 0px) scale(1)' },
+                        },
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(-10px)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <style>
+        html { scroll-padding-top: 5rem; }
+        .bg-grid-pattern {
+            background-size: 50px 50px;
+            background-image: 
+                linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+            mask-image: radial-gradient(circle at center, black 60%, transparent 100%);
+            -webkit-mask-image: radial-gradient(circle at center, black 60%, transparent 100%);
+        }
+        .glass-nav { background: rgba(11, 17, 32, 0.7); backdrop-filter: blur(16px); border-bottom: 1px solid rgba(255, 255, 255, 0.08); }
+        .glass-card { background: rgba(30, 41, 59, 0.4); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.08); box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); }
+        .text-glow { text-shadow: 0 0 30px rgba(56, 189, 248, 0.6); }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #0b1120; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+        .prose-sm p { margin-bottom: 0.5em; }
+        .prose-sm pre { background-color: #0f172a; padding: 0.5rem; border-radius: 0.375rem; overflow-x: auto; }
+        .prose-sm code { color: #38bdf8; font-family: monospace; }
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="bg-dark-bg text-slate-300 font-sans antialiased selection:bg-brand-500 selection:text-white relative">
+
+    <!-- 背景装饰 -->
+    <div class="fixed inset-0 pointer-events-none z-0">
+        <div class="absolute inset-0 bg-grid-pattern opacity-60"></div>
+        <div class="absolute top-0 left-1/4 w-[500px] h-[500px] bg-brand-500/10 rounded-full blur-[100px] mix-blend-screen animate-blob"></div>
+        <div class="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-purple-500/10 rounded-full blur-[100px] mix-blend-screen animate-blob animation-delay-2000"></div>
+    </div>
+
+    <!-- 导航栏 -->
+    <nav class="fixed w-full z-50 glass-nav transition-all duration-300">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <!-- Logo -->
+                <a href="#" class="flex items-center gap-3 group">
+                    <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-brand-400 to-brand-600 flex items-center justify-center text-white font-bold shadow-lg shadow-brand-500/20 group-hover:scale-110 transition-transform">
+                        AL
+                    </div>
+                    <span class="text-white font-bold text-lg tracking-wide group-hover:text-brand-400 transition-colors">溯光小组</span>
+                </a>
+                
+                <!-- 桌面端菜单 -->
+                <div class="hidden md:block">
+                    <div class="ml-10 flex items-center space-x-6">
+                        <a href="#structure" class="text-sm font-medium hover:text-white relative group py-2">
+                            结构展示
+                            <span class="absolute bottom-0 left-0 w-0 h-0.5 bg-brand-400 transition-all duration-300 group-hover:w-full"></span>
+                        </a>
+                        <a href="#demo" class="text-sm font-medium hover:text-white relative group py-2">
+                            全程演示
+                            <span class="absolute bottom-0 left-0 w-0 h-0.5 bg-brand-400 transition-all duration-300 group-hover:w-full"></span>
+                        </a>
+                        <a href="#sub-features" class="text-sm font-medium hover:text-white relative group py-2">
+                            功能特写
+                            <span class="absolute bottom-0 left-0 w-0 h-0.5 bg-brand-400 transition-all duration-300 group-hover:w-full"></span>
+                        </a>
+                        <a href="#tech" class="text-sm font-medium hover:text-white relative group py-2">
+                            技术详解
+                            <span class="absolute bottom-0 left-0 w-0 h-0.5 bg-brand-400 transition-all duration-300 group-hover:w-full"></span>
+                        </a>
+                        <div class="h-4 w-px bg-slate-700 mx-2"></div>
+                        <a href="https://github.com/TuTuLiang904/AL-car" target="_blank" class="flex items-center gap-2 bg-white/5 hover:bg-white/10 text-white px-4 py-1.5 rounded-full text-sm transition-all border border-white/10 hover:border-brand-400/50 hover:shadow-lg hover:shadow-brand-500/10">
+                            <i class="fa-brands fa-github"></i>
+                            <span>GitHub</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero 区域 -->
+    <section class="relative pt-40 pb-32 overflow-hidden z-10 flex flex-col items-center justify-center min-h-[80vh]">
+        <div class="relative z-10 max-w-5xl mx-auto px-4 text-center">
+            <div class="inline-flex items-center gap-2 mb-8 px-4 py-1.5 rounded-full border border-brand-500/30 bg-brand-500/10 backdrop-blur-sm text-brand-300 text-xs font-mono tracking-wider uppercase animate-fadeIn">
+                <span class="w-2 h-2 rounded-full bg-brand-400 animate-pulse"></span>
+                Embedded System Project 2026
+            </div>
+            
+            <h1 class="text-5xl md:text-7xl lg:text-8xl font-bold text-white mb-8 tracking-tight leading-tight">
+                智能循迹避障小车 <br>
+                <span class="text-transparent bg-clip-text bg-gradient-to-r from-brand-300 via-cyan-300 to-indigo-300 text-glow filter drop-shadow-lg">AL-Car System</span>
+            </h1>
+            
+            <p class="text-xl text-slate-400 max-w-2xl mx-auto leading-relaxed mb-10">
+                集成 <span class="text-brand-400 font-semibold">视觉识别</span>、<span class="text-brand-400 font-semibold">PID闭环控制</span> 与 <span class="text-brand-400 font-semibold">机械臂操作</span> 的综合性嵌入式项目。<br>
+                不仅仅是跑得快，更能“看”得清，“抓”得准。
+            </p>
+
+            <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
+                <a href="#demo" class="px-8 py-3.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-bold shadow-lg shadow-brand-500/30 hover:shadow-brand-500/50 hover:-translate-y-1 transition-all duration-300 flex items-center gap-2 w-full sm:w-auto justify-center">
+                    <i class="fa-solid fa-play"></i> 观看实机演示
+                </a>
+                <a href="#tech" class="px-8 py-3.5 rounded-xl bg-slate-800/50 hover:bg-slate-700/50 border border-slate-600 hover:border-brand-400/50 text-white backdrop-blur-md hover:-translate-y-1 transition-all duration-300 w-full sm:w-auto justify-center flex items-center gap-2">
+                    <i class="fa-solid fa-microchip"></i> 了解技术架构
+                </a>
+                <a href="https://github.com/TuTuLiang904/AL-car" target="_blank" class="px-8 py-3.5 rounded-xl bg-slate-900/50 hover:bg-black border border-slate-700 hover:border-white text-white backdrop-blur-md hover:-translate-y-1 transition-all duration-300 w-full sm:w-auto justify-center flex items-center gap-2 group">
+                    <i class="fa-brands fa-github text-xl group-hover:rotate-12 transition-transform"></i> 项目仓库
+                </a>
+            </div>
+        </div>
+
+        <div class="absolute bottom-10 left-1/2 -translate-x-1/2 animate-float text-slate-500">
+            <i class="fa-solid fa-chevron-down text-2xl opacity-50"></i>
+        </div>
+    </section>
+
+    <!-- 1. 小车基本结构 -->
+    <section id="structure" class="py-24 relative z-10">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-end justify-between mb-12 border-b border-slate-800 pb-4">
+                <div>
+                    <h2 class="text-3xl font-bold text-white flex items-center gap-3">
+                        <span class="w-1.5 h-8 bg-brand-500 rounded-full"></span>
+                        小车基本结构
+                    </h2>
+                    <p class="text-slate-500 mt-2 pl-4">Hardware Structure Design</p>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                <!-- 整体外观: car1.jpg -->
+                <div class="group relative aspect-[4/3] rounded-2xl overflow-hidden glass-card hover:border-brand-500/50 transition-all duration-500">
+                    <img src="images/car1.jpg" alt="整体外观" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700">
+                    <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-6">
+                        <span class="text-brand-400 text-xs font-mono mb-1">VIEW 01</span>
+                        <span class="text-white font-bold text-lg translate-y-2 group-hover:translate-y-0 transition-transform duration-300">整体外观</span>
+                    </div>
+                </div>
+
+                <!-- 机械臂视角: car2.jpg -->
+                <div class="group relative aspect-[4/3] rounded-2xl overflow-hidden glass-card hover:border-brand-500/50 transition-all duration-500">
+                    <img src="images/car2.jpg" alt="机械臂视角" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700">
+                    <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-6">
+                        <span class="text-brand-400 text-xs font-mono mb-1">VIEW 02</span>
+                        <span class="text-white font-bold text-lg translate-y-2 group-hover:translate-y-0 transition-transform duration-300">机械臂视角</span>
+                    </div>
+                </div>
+
+                <!-- 侧面结构: car3.jpg -->
+                <div class="group relative aspect-[4/3] rounded-2xl overflow-hidden glass-card hover:border-brand-500/50 transition-all duration-500">
+                    <img src="images/car3.jpg" alt="侧面结构" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700">
+                    <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-6">
+                        <span class="text-brand-400 text-xs font-mono mb-1">VIEW 03</span>
+                        <span class="text-white font-bold text-lg translate-y-2 group-hover:translate-y-0 transition-transform duration-300">侧面结构</span>
+                    </div>
+                </div>
+
+                <!-- 料斗与齿轮结构: car4.jpg -->
+                <div class="group relative aspect-[4/3] rounded-2xl overflow-hidden glass-card hover:border-brand-500/50 transition-all duration-500">
+                    <img src="images/car4.jpg" alt="料斗与齿轮结构" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700">
+                    <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-6">
+                        <span class="text-brand-400 text-xs font-mono mb-1">VIEW 04</span>
+                        <span class="text-white font-bold text-lg translate-y-2 group-hover:translate-y-0 transition-transform duration-300">料斗与齿轮结构</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 2. 任务全过程演示: main.mp4 -->
+    <section id="demo" class="py-24 bg-slate-900/40 relative z-10 border-y border-white/5">
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <div class="mb-12">
+                <span class="text-brand-500 font-mono text-sm tracking-widest uppercase">Video Demonstration</span>
+                <h2 class="text-4xl font-bold text-white mt-2">任务全过程演示</h2>
+            </div>
+            
+            <div class="relative rounded-3xl overflow-hidden shadow-2xl shadow-brand-500/20 border border-slate-700/50 bg-black aspect-[9/16] md:aspect-video mx-auto max-w-sm md:max-w-full group">
+                <video controls class="w-full h-full object-contain relative z-10">
+                    <source src="videos/main.mp4" type="video/mp4">
+                    您的浏览器不支持视频播放。
+                </video>
+            </div>
+        </div>
+    </section>
+
+    <!-- 3. 功能特写: avoid_obstacle, pick_object, turn, crossroad -->
+    <section id="sub-features" class="py-24 relative z-10">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <h2 class="text-3xl font-bold text-white inline-block border-b-2 border-brand-500 pb-2">功能特写</h2>
+                <p class="text-slate-500 mt-4">Key Features Breakdown</p>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <!-- 避障功能 -->
+                <div class="glass-card p-6 rounded-2xl hover:bg-slate-800/50 transition-colors group">
+                    <div class="flex justify-between items-start mb-4">
+                        <div>
+                            <h3 class="text-xl font-bold text-white group-hover:text-brand-400 transition-colors">避障功能</h3>
+                            <p class="text-sm text-slate-400 mt-1">Obstacle Avoidance</p>
+                        </div>
+                        <i class="fa-solid fa-road-barrier text-slate-600 text-xl group-hover:text-brand-500 transition-colors"></i>
+                    </div>
+                    <div class="aspect-video bg-black rounded-lg overflow-hidden relative border border-slate-700/50 shadow-inner">
+                        <video controls class="w-full h-full object-cover">
+                            <source src="videos/avoid_obstacle.mp4" type="video/mp4">
+                        </video>
+                    </div>
+                    <p class="text-slate-400 text-sm mt-4 leading-relaxed">
+                        精准识别障碍物并重新规划路径，确保行驶安全。
+                    </p>
+                </div>
+
+                <!-- 拾物功能 -->
+                <div class="glass-card p-6 rounded-2xl hover:bg-slate-800/50 transition-colors group">
+                    <div class="flex justify-between items-start mb-4">
+                        <div>
+                            <h3 class="text-xl font-bold text-white group-hover:text-brand-400 transition-colors">拾物功能</h3>
+                            <p class="text-sm text-slate-400 mt-1">Object Picking</p>
+                        </div>
+                        <i class="fa-solid fa-hand-lizard text-slate-600 text-xl group-hover:text-brand-500 transition-colors"></i>
+                    </div>
+                    <div class="aspect-video bg-black rounded-lg overflow-hidden relative border border-slate-700/50 shadow-inner">
+                        <video controls class="w-full h-full object-cover">
+                            <source src="videos/pick_object.mp4" type="video/mp4">
+                        </video>
+                    </div>
+                    <p class="text-slate-400 text-sm mt-4 leading-relaxed">
+                        视觉引导下的物体抓取与搬运，动作精准流畅。
+                    </p>
+                </div>
+
+                <!-- 绕弯功能 -->
+                <div class="glass-card p-6 rounded-2xl hover:bg-slate-800/50 transition-colors group">
+                    <div class="flex justify-between items-start mb-4">
+                        <div>
+                            <h3 class="text-xl font-bold text-white group-hover:text-brand-400 transition-colors">绕弯功能</h3>
+                            <p class="text-sm text-slate-400 mt-1">S-Curve Tracking</p>
+                        </div>
+                        <i class="fa-solid fa-route text-slate-600 text-xl group-hover:text-brand-500 transition-colors"></i>
+                    </div>
+                    <div class="aspect-video bg-black rounded-lg overflow-hidden relative border border-slate-700/50 shadow-inner">
+                        <video controls class="w-full h-full object-cover">
+                            <source src="videos/turn.mp4" type="video/mp4">
+                        </video>
+                    </div>
+                    <p class="text-slate-400 text-sm mt-4 leading-relaxed">
+                        灵活应对S型弯道与复杂路况，保持车身稳定。
+                    </p>
+                </div>
+
+                <!-- 过十字路口 -->
+                <div class="glass-card p-6 rounded-2xl hover:bg-slate-800/50 transition-colors group">
+                    <div class="flex justify-between items-start mb-4">
+                        <div>
+                            <h3 class="text-xl font-bold text-white group-hover:text-brand-400 transition-colors">过十字路口</h3>
+                            <p class="text-sm text-slate-400 mt-1">Crossroad Logic</p>
+                        </div>
+                        <i class="fa-solid fa-arrows-to-dot text-slate-600 text-xl group-hover:text-brand-500 transition-colors"></i>
+                    </div>
+                    <div class="aspect-video bg-black rounded-lg overflow-hidden relative border border-slate-700/50 shadow-inner">
+                        <video controls class="w-full h-full object-cover">
+                            <source src="videos/crossroad.mp4" type="video/mp4">
+                        </video>
+                    </div>
+                    <p class="text-slate-400 text-sm mt-4 leading-relaxed">
+                        稳定识别路口标志并执行动作，逻辑判断准确。
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 4. 技术介绍 -->
+    <section id="tech" class="py-24 relative z-10 bg-gradient-to-t from-dark-bg via-slate-900/80 to-transparent">
+        <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+            <h2 class="text-3xl font-bold text-white mb-16 border-l-4 border-brand-500 pl-6 flex flex-col">
+                技术架构详解
+                <span class="text-sm text-slate-500 font-normal mt-1 font-mono">Technical Documentation</span>
+            </h2>
+            
+            <div class="space-y-16">
+                <!-- 视觉技术 -->
+                <div class="flex flex-col md:flex-row gap-8 group">
+                    <div class="md:w-1/4 pt-2">
+                        <div class="flex items-center gap-4 text-brand-400 mb-2">
+                            <div class="p-3 bg-brand-500/10 rounded-lg group-hover:bg-brand-500/20 transition-colors">
+                                <i class="fa-solid fa-eye text-2xl"></i>
+                            </div>
+                            <h3 class="text-xl font-bold text-white">视觉技术</h3>
+                        </div>
+                        <div class="h-0.5 w-12 bg-brand-500/30 mt-4 group-hover:w-full transition-all duration-500"></div>
+                    </div>
+                    <div class="md:w-3/4">
+                        <div class="p-6 rounded-2xl bg-gradient-to-br from-slate-800/30 to-transparent border-l-2 border-brand-500/30 hover:border-brand-500 transition-colors">
+                            <p class="text-slate-400 leading-relaxed text-justify">
+                                采用<strong class="text-brand-200">双算法协同感知</strong>设计，视觉核心由上位机（RDK X5）统筹处理，依托摄像头完成环境视觉信号的实时采集与解析，针对不同场景适配专属视觉算法——障碍规避与物块识别环节搭载YOLOv8轻量化模型，实现对目标物块的精准分类、位置定位及障碍轮廓检测，保障对周边障碍物的快速感知与物块的有效识别；循迹行驶环节采用OpenCV机器视觉算法，通过图像灰度化、二值化、轮廓提取及重心定位等核心处理，完成对轨迹线的实时追踪与位置判定。视觉系统算法选型贴合小车运行算力需求，YOLOv8与OpenCV各司其职、无缝衔接，对采集的视觉信号实现分层处理、精准解析，为小车的避障决策、物块识别及循迹行驶提供了稳定、可靠的视觉感知依据，是小车实现自主环境交互与运动决策的核心支撑。
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 控制技术 -->
+                <div class="flex flex-col md:flex-row gap-8 group">
+                    <div class="md:w-1/4 pt-2">
+                        <div class="flex items-center gap-4 text-purple-400 mb-2">
+                            <div class="p-3 bg-purple-500/10 rounded-lg group-hover:bg-purple-500/20 transition-colors">
+                                <i class="fa-solid fa-microchip text-2xl"></i>
+                            </div>
+                            <h3 class="text-xl font-bold text-white">控制技术</h3>
+                        </div>
+                        <div class="h-0.5 w-12 bg-purple-500/30 mt-4 group-hover:w-full transition-all duration-500"></div>
+                    </div>
+                    <div class="md:w-3/4">
+                        <div class="p-6 rounded-2xl bg-gradient-to-br from-slate-800/30 to-transparent border-l-2 border-purple-500/30 hover:border-purple-500 transition-colors">
+                            <p class="text-slate-400 leading-relaxed text-justify">
+                                采用上位机加下位机设计，上位机（RDK X5）负责接受摄像头的信号，使用yolov8模型实时识别物块，下位机（STM32C8T6）接受上位机传来的二进制信号，将信号转换为多个函数并执行，此次stm32资源分配合理，接口布置科学，四个定时器发挥最大作用，为整一台小车的流畅运行奠定了重要基础。
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 机械设计 -->
+                <div class="flex flex-col md:flex-row gap-8 group">
+                    <div class="md:w-1/4 pt-2">
+                        <div class="flex items-center gap-4 text-emerald-400 mb-2">
+                            <div class="p-3 bg-emerald-500/10 rounded-lg group-hover:bg-emerald-500/20 transition-colors">
+                                <i class="fa-solid fa-compass-drafting text-2xl"></i>
+                            </div>
+                            <h3 class="text-xl font-bold text-white">机械设计</h3>
+                        </div>
+                        <div class="h-0.5 w-12 bg-emerald-500/30 mt-4 group-hover:w-full transition-all duration-500"></div>
+                    </div>
+                    <div class="md:w-3/4">
+                        <div class="p-6 rounded-2xl bg-gradient-to-br from-slate-800/30 to-transparent border-l-2 border-emerald-500/30 hover:border-emerald-500 transition-colors">
+                            <div class="space-y-4 text-slate-400 leading-relaxed text-justify">
+                                <p>本次冬令营小车机械结构设计以便捷、高效为核心原则，全方位适配实操调试与团队协作需求。整车外壳采用榫卯结构装配，大幅提升拆装便捷性，为后续结构调整与维护预留空间。</p>
+                                <p>为配合电控及视觉组队友高效调试车辆，我们提前敲定小车核心尺寸，优先打印搭载基础功能结构的底板投入调试工作，加速项目整体推进。基于初期调试反馈，历经两次结构迭代，最终定型可兼容所有功能模块的小车底板，为后续组件集成奠定基础。</p>
+                                <p>机械臂部分采用三舵机四自由度结构设计，设计前期先绘制完整草图，依据已确定的整车结构尺寸，精准定位机械臂与货架的安装位置。通过模拟pitch轴旋转角度，反复测算并确定各臂节尺寸参数，同时详细记录相关数据，为电控组队友的调试工作提供精准数据支撑，保障协作效率。</p>
+                                <p>此外，车头两侧采用斜面设计，车壳头部及两侧预留合理镂空，一方面可促进空气流通，有效降低行驶阻力；另一方面，电机转速经过合理调控，避免因转速过高导致转弯失稳，兼顾动力与行驶稳定性。机械臂设计时重点考量舵机走线布局，通过优化线路路径防止旋转过程中线路缠绕，而车壳预留的镂空结构也为线路布置提供了便利，进一步提升整车结构的合理性和可靠性。</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 页脚 -->
+    <footer class="py-12 border-t border-slate-800 bg-dark-bg text-center relative z-10">
+        <div class="max-w-7xl mx-auto px-4">
+            <p class="text-slate-500 text-sm mb-4">
+                © 2024 溯光小组 (AL-car Project). All Rights Reserved.
+            </p>
+            <div class="flex justify-center gap-6">
+                <a href="https://github.com/TuTuLiang904/AL-car" target="_blank" class="text-slate-600 hover:text-white transition-colors">
+                    <i class="fa-brands fa-github text-2xl"></i>
+                </a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- AI 助手部分 (Gemini) -->
+    <button id="ai-toggle-btn" class="fixed bottom-6 right-6 w-14 h-14 bg-brand-600 hover:bg-brand-500 rounded-full shadow-lg shadow-brand-500/30 flex items-center justify-center text-white text-2xl z-50 transition-transform hover:scale-110 group">
+        <i class="fa-solid fa-wand-magic-sparkles animate-pulse-slow"></i>
+        <span class="absolute right-full mr-3 px-2 py-1 bg-slate-800 text-xs text-brand-200 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap border border-slate-700">
+            AI 技术助手
+        </span>
+    </button>
+
+    <div id="ai-chat-window" class="fixed bottom-24 right-6 w-[90vw] md:w-96 h-[500px] bg-dark-card border border-brand-500/30 rounded-2xl shadow-2xl flex flex-col z-50 transform translate-y-[120%] transition-transform duration-300 backdrop-blur-md bg-opacity-95 overflow-hidden">
+        <div class="bg-slate-900/50 p-4 border-b border-white/5 flex justify-between items-center">
+            <div class="flex items-center gap-2">
+                <i class="fa-solid fa-robot text-brand-400"></i>
+                <span class="font-bold text-white text-sm">溯光 AI 技术支持</span>
+            </div>
+            <button id="close-chat" class="text-slate-400 hover:text-white transition-colors">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+
+        <div id="chat-messages" class="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-hide text-sm">
+            <div class="flex items-start gap-3">
+                <div class="w-8 h-8 rounded-full bg-brand-600 flex items-center justify-center shrink-0">
+                    <i class="fa-solid fa-microchip text-white text-xs"></i>
+                </div>
+                <div class="bg-slate-800 rounded-2xl rounded-tl-none p-3 text-slate-300 border border-white/5">
+                    <p>你好！我是溯光项目的 AI 技术助手。🤖</p>
+                    <p class="mt-2 text-xs text-slate-400">我可以回答关于：<br>• PID 算法调试<br>• STM32 硬件控制<br>• OpenMV 视觉识别<br>• 机械臂逆运动学</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="p-3 bg-slate-900/50 border-t border-white/5">
+            <div class="flex gap-2">
+                <input type="text" id="user-input" placeholder="输入关于小车的问题..." class="flex-1 bg-slate-800 border border-slate-700 text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-brand-500 transition-colors">
+                <button id="send-btn" class="bg-brand-600 hover:bg-brand-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                    <i class="fa-solid fa-paper-plane"></i>
+                </button>
+            </div>
+            <div class="text-[10px] text-slate-600 text-center mt-1">Powered by Gemini ✨</div>
+        </div>
+    </div>
+
+    <script>
+        const apiKey = ""; 
+        const chatWindow = document.getElementById('ai-chat-window');
+        const toggleBtn = document.getElementById('ai-toggle-btn');
+        const closeBtn = document.getElementById('close-chat');
+        const sendBtn = document.getElementById('send-btn');
+        const userInput = document.getElementById('user-input');
+        const messagesContainer = document.getElementById('chat-messages');
+
+        toggleBtn.addEventListener('click', () => { chatWindow.classList.toggle('translate-y-[120%]'); });
+        closeBtn.addEventListener('click', () => { chatWindow.classList.add('translate-y-[120%]'); });
+        function scrollToBottom() { messagesContainer.scrollTop = messagesContainer.scrollHeight; }
+
+        function addMessage(text, isUser) {
+            const div = document.createElement('div');
+            div.className = isUser ? "flex items-start gap-3 justify-end" : "flex items-start gap-3";
+            const avatar = isUser ? 
+                `<div class="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center shrink-0 order-2"><i class="fa-solid fa-user text-xs"></i></div>` :
+                `<div class="w-8 h-8 rounded-full bg-brand-600 flex items-center justify-center shrink-0"><i class="fa-solid fa-microchip text-xs"></i></div>`;
+            const bubbleClass = isUser ? 
+                "bg-brand-600/20 border border-brand-500/30 rounded-2xl rounded-tr-none p-3 text-slate-200" : 
+                "bg-slate-800 rounded-2xl rounded-tl-none p-3 text-slate-300 border border-white/5 prose-sm";
+            const content = isUser ? text : marked.parse(text);
+
+            div.innerHTML = `${avatar}<div class="${bubbleClass} max-w-[80%] break-words">${content}</div>`;
+            messagesContainer.appendChild(div);
+            scrollToBottom();
+        }
+
+        async function handleSend() {
+            const text = userInput.value.trim();
+            if (!text) return;
+
+            userInput.value = '';
+            addMessage(text, true);
+            
+            const loadingDiv = document.createElement('div');
+            loadingDiv.className = "flex items-start gap-3";
+            loadingDiv.innerHTML = `<div class="w-8 h-8 rounded-full bg-brand-600 flex items-center justify-center shrink-0"><i class="fa-solid fa-microchip text-xs"></i></div><div class="bg-slate-800 rounded-2xl rounded-tl-none p-4 border border-white/5 flex gap-1"><span class="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce"></span><span class="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce delay-100"></span><span class="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce delay-200"></span></div>`;
+            messagesContainer.appendChild(loadingDiv);
+            scrollToBottom();
+            
+            userInput.disabled = true;
+            sendBtn.disabled = true;
+
+            try {
+                const systemPrompt = `你不仅是一个通用 AI，你是'溯光 (AL-car)' 智能小车项目的技术支持助手。你的职责是回答访客关于这个项目的技术问题。项目关键技术点：1. 视觉：使用 OpenMV/K210，OpenCV 库，HSV 颜色阈值分割，腐蚀膨胀，多点拟合算法。2. 控制：STM32F103/F4，FreeRTOS，增量式 PID 算法，编码器闭环。3. 机械：亚克力/铝合金双层板，麦克纳姆轮，逆运动学解算控制机械臂。请用专业、简洁且友好的中文回答用户问题。如果用户问的问题与嵌入式、代码、硬件无关，请礼貌地将话题引回到小车项目上。`;
+
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: text }] }],
+                        systemInstruction: { parts: [{ text: systemPrompt }] }
+                    })
+                });
+
+                const data = await response.json();
+                messagesContainer.removeChild(loadingDiv);
+                if (data.candidates && data.candidates[0].content) {
+                    addMessage(data.candidates[0].content.parts[0].text, false);
+                } else {
+                    addMessage("抱歉，我现在连接不上服务器，请稍后再试。", false);
+                }
+
+            } catch (error) {
+                messagesContainer.removeChild(loadingDiv);
+                addMessage("网络错误，请检查连接。", false);
+                console.error(error);
+            } finally {
+                userInput.disabled = false;
+                sendBtn.disabled = false;
+                userInput.focus();
+            }
+        }
+
+        sendBtn.addEventListener('click', handleSend);
+        userInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') handleSend(); });
+    </script>
+</body>
+</html>
