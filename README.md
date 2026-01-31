@@ -22,3 +22,5 @@ gnd--------gnd
 RDK X5 Pin 10 (RX) -> 接 STM32 PA9 (TX)
 
 RDK X5 Pin 6 (GND) -> 接 STM32 GND (共地非常重要！)
+
+
